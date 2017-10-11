@@ -1,5 +1,4 @@
-// from (c) https://msdn.microsoft.com/en-us/library/windows/desktop/ms737591(v=vs.85).aspx
-
+// chat_client.cpp// from (c) https://msdn.microsoft.com/en-us/library/windows/desktop/ms737591(v=vs.85).aspx
 #include "stdafx.h"
 #define WIN32_LEAN_AND_MEAN
 
