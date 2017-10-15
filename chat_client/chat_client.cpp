@@ -1,4 +1,6 @@
 // chat_client.cpp// from (c) https://msdn.microsoft.com/en-us/library/windows/desktop/ms737591(v=vs.85).aspx
+
+//////////////////////////////////////////	Declarations, Includes, Globals, Structs:
 #include "stdafx.h"
 #define WIN32_LEAN_AND_MEAN
 
@@ -7,42 +9,36 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "client_funcs.h"
 
+int iResult;
 
-// Need to link with Ws2_32.lib, Mswsock.lib, and Advapi32.lib
-#pragma comment (lib, "Ws2_32.lib")
-#pragma comment (lib, "Mswsock.lib")
-#pragma comment (lib, "AdvApi32.lib")
+int my_init_socket();
+int my_connection();
+int my_send_message(int clientSocket, char* sendbuf, int theLenth, int theZero);
+int my_recv_message(SOCKET clientSocket, char* recvbuf, int recvbuflen);
+int my_shutdown(SOCKET clientSocket, int how);
+void my_cleanup(SOCKET clientSocket);
 
-#define DEFAULT_BUFLEN 1024
-#define DEFAULT_PORT "15000"
+struct addrinfo *result = NULL;
+struct addrinfo *ptr = NULL;
+struct addrinfo hints;
 
-//int connect_socket(char* ip, int port);
-//void send_message(int sock, char* message);
-
-int main(int argc, char **argv)
+//////////////////////////////////////////	FUNCTIONS:
+int my_init_socket()
 {
-	//init_socket();
-
-	//int client = connect_socket("192...", "15000");
-
-	//send_message(client, "Agha ...");
-	//recv_message(client, buffer, 1000);
-
 	WSADATA wsaData;
-	int iResult;
 
 	// Initialize Winsock
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
 	if (iResult != 0) {
 		printf("WSAStartup failed with error: %d\n", iResult);
-		return 1;
+		return 1; // Error 
 	}
+}
 
-	struct addrinfo *result = NULL,
-		*ptr = NULL,
-		hints;
-
+int my_connection()
+{
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
@@ -64,53 +60,45 @@ int main(int argc, char **argv)
 	}
 
 	// Create a SOCKET for connecting to server
-	SOCKET ConnectSocket = INVALID_SOCKET;
-	ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
-	if (ConnectSocket == INVALID_SOCKET) {
+	SOCKET clientSocket = INVALID_SOCKET;
+	clientSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+	if (clientSocket == INVALID_SOCKET) {
 		printf("socket failed with error: %ld\n", WSAGetLastError());
 		WSACleanup();
 		return 1;
 	}
 
 	// Connect to server.
-	iResult = connect(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
+	iResult = connect(clientSocket, result->ai_addr, (int)result->ai_addrlen);
 	if (iResult == SOCKET_ERROR) {
 		printf("Unable to connect to server!\n");
-		closesocket(ConnectSocket);
+		closesocket(clientSocket);
 		WSACleanup();
 		return 1;
 	}
 
-	freeaddrinfo(result);
+	return clientSocket;
+}
 
-	char *sendbuf = "Agha kojaei?";
-	char recvbuf[DEFAULT_BUFLEN];
-	int recvbuflen = DEFAULT_BUFLEN;
-
-	// Send an initial buffer
-	iResult = send(ConnectSocket, sendbuf, (int)strlen(sendbuf), 0);
+int my_send_message(int clientSocket, char* sendbuf, int, int)
+{
+	iResult = send(clientSocket, sendbuf, strlen(sendbuf), 0);
+	
 	if (iResult == SOCKET_ERROR) {
 		printf("send failed with error: %d\n", WSAGetLastError());
-		closesocket(ConnectSocket);
+		closesocket(clientSocket);
 		WSACleanup();
 		return 1;
 	}
+}
 
-	printf("Bytes Sent: %ld\n", iResult);
-
-	// shutdown the connection since no more data will be sent
-	iResult = shutdown(ConnectSocket, SD_SEND);
-	if (iResult == SOCKET_ERROR) {
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
-		closesocket(ConnectSocket);
-		WSACleanup();
-		return 1;
-	}
-
+//void recv_message(SOCKET s, char[] buffer, int buffer_max_len) 
+int my_recv_message(SOCKET clientSocket, char* recvbuf, int recvbuflen)
+{
 	// Receive until the peer closes the connection
 	do {
 
-		iResult = recv(ConnectSocket, recvbuf, recvbuflen, 0);
+		iResult = recv(clientSocket, recvbuf, recvbuflen, 0);
 		if (iResult > 0)
 			printf("Bytes received: %d\n", iResult);
 		else if (iResult == 0)
@@ -119,10 +107,54 @@ int main(int argc, char **argv)
 			printf("recv failed with error: %d\n", WSAGetLastError());
 
 	} while (iResult > 0);
+	
+	return iResult;
+}
+
+int my_shutdown(SOCKET clientSocket, int how) // how == SD_SEND
+{
+	// shutdown the connection since no more data will be sent
+	iResult = shutdown(clientSocket, SD_SEND);
+	if (iResult == SOCKET_ERROR) {
+		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		closesocket(clientSocket);
+		WSACleanup();
+		return 1;
+	}
+}
+
+void my_cleanup(SOCKET clientSocket)
+{
+	// cleanup
+	closesocket(clientSocket);
+	WSACleanup();
+}
+
+//////////////////////////////////////////	Main:
+int main(int argc, char **argv)
+{
+	my_init_socket();
+	
+	int clientSocket = my_connection(); // e.g connect_socket("192...", 15000); for passing IP and Port.
+	
+	freeaddrinfo(result);
+
+	/// preparing the send_message parameters:
+	char *sendbuf = "Agha kojaei?";	// e.g. a  char* message
+	char recvbuf[DEFAULT_BUFLEN];
+	int recvbuflen = DEFAULT_BUFLEN;
+	///
+	// Send an initial buffer
+	iResult = my_send_message(clientSocket, sendbuf, (int)strlen(sendbuf), 0); // e.g. send(clientSocket, "Agha...");
+	printf("Bytes Sent: %ld\n", iResult);
+	
+	iResult = my_recv_message(clientSocket, recvbuf, recvbuflen); // e.g. recv(client, buffer, 1000);
+
+	// shutdown the connection since no more data will be sent
+	iResult = my_shutdown(clientSocket, SD_SEND);
 
 	// cleanup
-	closesocket(ConnectSocket);
-	WSACleanup();
+	my_cleanup(clientSocket);
 
 	return 0;
 }
