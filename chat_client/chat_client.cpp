@@ -14,7 +14,7 @@
 int iResult;
 
 int my_init_socket();
-int my_connection();
+int my_connection(const char* host, const char* port);
 int my_send_message(int clientSocket, char* sendbuf, int theLenth, int theZero);
 int my_recv_message(SOCKET clientSocket, char* recvbuf, int recvbuflen);
 int my_shutdown(SOCKET clientSocket, int how);
@@ -37,15 +37,17 @@ int my_init_socket()
 	}
 }
 
-int my_connection()
+int my_connection(const char* host, const char* port)
 {
+	my_init_socket();
+
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
 	// Resolve the server address and port
-	iResult = getaddrinfo("192.168.1.104", DEFAULT_PORT, &hints, &result);
+	iResult = getaddrinfo(host, port, &hints, &result); // e.g 192.168.1.104", DEFAULT_PORT,...
 	if (iResult != 0) {
 		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();
@@ -133,9 +135,11 @@ void my_cleanup(SOCKET clientSocket)
 //////////////////////////////////////////	Main:
 int main(int argc, char **argv)
 {
-	my_init_socket();
-	
-	int clientSocket = my_connection(); // e.g connect_socket("192...", 15000); for passing IP and Port.
+	const char* myHost = "127.0.0.1";
+	const char* myPort = DEFAULT_PORT;
+
+	// creating the socket and connecting
+	int clientSocket = my_connection(myHost, myPort); // e.g connect_socket("192...", 15000); for passing IP and Port. 
 	
 	freeaddrinfo(result);
 
