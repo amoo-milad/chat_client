@@ -132,6 +132,15 @@ void my_cleanup(SOCKET clientSocket)
 	WSACleanup();
 }
 
+void check_result(int iResult, char* funcName)  // Usage Func
+{
+	if (iResult == 0)
+		printf("check result: '%s'\t compeleted.\n", funcName);
+
+	else
+		printf("check result: '%s'\t stoped!\n", funcName);
+}
+
 //////////////////////////////////////////	Main:
 int main(int argc, char **argv)
 {
@@ -140,7 +149,8 @@ int main(int argc, char **argv)
 
 	// creating the socket and connecting
 	int clientSocket = my_connection(myHost, myPort); // e.g connect_socket("192...", 15000); for passing IP and Port. 
-	
+	printf("\nclientSocket is %d \n\n", clientSocket);
+
 	freeaddrinfo(result);
 
 	/// preparing the send_message parameters:
@@ -151,11 +161,14 @@ int main(int argc, char **argv)
 	// Send an initial buffer
 	iResult = my_send_message(clientSocket, sendbuf, (int)strlen(sendbuf), 0); // e.g. send(clientSocket, "Agha...");
 	printf("Bytes Sent: %ld\n", iResult);
-	
+	check_result(iResult, "Sending");
+
 	iResult = my_recv_message(clientSocket, recvbuf, recvbuflen); // e.g. recv(client, buffer, 1000);
+	check_result(iResult, "Receiving");
 
 	// shutdown the connection since no more data will be sent
 	iResult = my_shutdown(clientSocket, SD_SEND);
+	check_result(iResult, "Shutdown");
 
 	// cleanup
 	my_cleanup(clientSocket);
