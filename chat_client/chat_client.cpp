@@ -15,10 +15,11 @@ int iResult = 0;
 
 int my_init_socket();
 int my_connection(const char* host, const char* port, SOCKET* clientSocket);
-int my_send_message(SOCKET clientSocket, char* sendbuf, size_t theLenth, int theZero);
-int my_recv_message(SOCKET clientSocket, char* recvbuf, int recvbuflen);
+int my_send_message(SOCKET clientSocket, char* sendbuf);
+int my_recv_message(SOCKET clientSocket, char* recvbuf);
 int my_shutdown(SOCKET clientSocket, int how);
 void my_cleanup(SOCKET clientSocket);
+
 void check_result(int iResult, char* funcName);  // Usage Func
 
 struct addrinfo *result = NULL;
@@ -43,7 +44,7 @@ int my_init_socket()
 int my_connection(const char* host, const char* port, SOCKET* clientSocket)
 {
 	int initResult = my_init_socket();
-	check_result(initResult, "initSocketStartup");
+	check_result(initResult, "initSocket");
 
 	ZeroMemory(&hints, sizeof(hints));
 	hints.ai_family = AF_INET;
@@ -87,9 +88,9 @@ int my_connection(const char* host, const char* port, SOCKET* clientSocket)
 	return iResult;
 }
 
-int my_send_message(SOCKET clientSocket, char* sendbuf, size_t theLenth, int theZero)
+int my_send_message(SOCKET clientSocket, char* sendbuf)
 {
-	iResult = send(clientSocket, sendbuf, strlen(sendbuf), 0);
+	iResult = send(clientSocket, sendbuf, (int)strlen(sendbuf), 0);
 	
 	if (iResult == SOCKET_ERROR) {
 		printf("send failed with error: %d\n", WSAGetLastError());
@@ -102,14 +103,14 @@ int my_send_message(SOCKET clientSocket, char* sendbuf, size_t theLenth, int the
 }
 
 //void recv_message(SOCKET s, char[] buffer, int buffer_max_len) 
-int my_recv_message(SOCKET clientSocket, char* recvbuf, int recvbuflen)
+int my_recv_message(SOCKET clientSocket, char* recvbuf)
 {
 	// Receive until the peer closes the connection
 	do {
 
-		iResult = recv(clientSocket, recvbuf, recvbuflen, 0);
+		iResult = recv(clientSocket, recvbuf, (int)strlen(recvbuf), 0);
 		if (iResult > 0)
-			printf("Bytes received: %d\n", iResult);
+			printf("Bytes received: %d, which is %s\n", iResult, recvbuf);
 		else if (iResult == 0)
 			printf("Connection closed\n");
 		else
@@ -117,6 +118,7 @@ int my_recv_message(SOCKET clientSocket, char* recvbuf, int recvbuflen)
 
 	} while (iResult > 0);
 	
+	printf("* data received: %s *\n", recvbuf);
 	return iResult;
 }
 
@@ -154,30 +156,31 @@ void check_result(int iResult, char* funcName)  // Usage Func
 }
 
 //////////////////////////////////////////	Main:
-int main(int argc, char **argv)
+int main()
 {
-	SOCKET clientSocket = INVALID_SOCKET;
+	/// preparing the my_connection parameters:
 	const char* myHost = "127.0.0.1";
 	const char* myPort = DEFAULT_PORT;
-
+	SOCKET clientSocket = INVALID_SOCKET;
+	///
 	// creating the socket and connecting
-	iResult = my_connection(myHost, myPort, &clientSocket); // e.g connect_socket("192...", 15000); for passing IP and Port. 
+	iResult = my_connection(myHost, myPort, &clientSocket);
 	check_result(iResult, "my_connection");
 	
 	freeaddrinfo(result);
 
 	/// preparing the send_message parameters:
-	char *sendbuf = "Agha kojaei?";	// e.g. a  char* message
+	char *sendbuf = "Milad Kh\0";	// e.g. a char* message
 	char recvbuf[DEFAULT_BUFLEN];
 	int recvbuflen = DEFAULT_BUFLEN;
 	///
 	// Send an initial buffer
-	iResult = my_send_message(clientSocket, sendbuf, (size_t)strlen(sendbuf), 0); // e.g. send(clientSocket, "Agha...");
-	printf("Bytes Sent: %ld\n", iResult);
+	iResult = my_send_message(clientSocket, sendbuf); // e.g. send(clientSocket, "Milad");
+	printf("\nBytes Sent: %ld\n", iResult);
+	iResult = 0;
 	//check_result(iResult, "Sending");
 
-	iResult = 0;
-	iResult = my_recv_message(clientSocket, recvbuf, recvbuflen); // e.g. recv(client, buffer, 1000);
+	iResult = my_recv_message(clientSocket, recvbuf); // e.g. recv(client, buffer, 1000); droped , recvbuflen from params
 	check_result(iResult, "Receiving");
 
 	// shutdown the connection since no more data will be sent
